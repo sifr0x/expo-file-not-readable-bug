@@ -4,6 +4,8 @@ import { StyleSheet, Text, View, Alert, ScrollView } from "react-native";
 import { Linking } from "react-native";
 import * as FileSystem from "expo-file-system";
 
+const UPLOAD_URL = "https://datahuys.net/upload.php";
+
 export default function App() {
   const [lastFile, setLastFile] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -21,6 +23,41 @@ export default function App() {
     };
     setLogs((currentLogs) => [logEntry, ...currentLogs]);
     console.log(`${timestamp} [${type}]:`, message);
+  };
+
+  const uploadFile = async (fileUri, fileContent) => {
+    try {
+      log("Starting file upload...");
+
+      const formData = new FormData();
+      formData.append("file", {
+        uri: fileUri,
+        type: "application/pdf",
+        name: fileUri.split("/").pop() || "document.pdf",
+      });
+
+      const response = await fetch(UPLOAD_URL, {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        log(`Upload successful: ${result.data.filename}`);
+        Alert.alert("Success", "File uploaded successfully");
+        return true;
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      log(`Upload failed: ${error.message}`, "error");
+      Alert.alert("Upload Error", error.message);
+      return false;
+    }
   };
 
   const handleDeeplink = async (contentUri) => {
@@ -51,31 +88,48 @@ export default function App() {
         FileSystem.EncodingType.ASCII,
       ];
 
+      let fileContent = null;
+      let successfulEncoding = null;
+
       for (const encoding of encodings) {
         try {
           log(`Trying to read with ${encoding} encoding...`);
-          const content = await FileSystem.readAsStringAsync(decodedUri, {
-            encoding: encoding,
-          });
-          log(`Success with ${encoding}! Content length: ${content.length}`);
-          log(`First 50 chars: ${content.substring(0, 50)}`);
-
-          setLastFile({
-            path: decodedUri,
-            header: content.substring(0, 50),
+          fileContent = await FileSystem.readAsStringAsync(decodedUri, {
             encoding: encoding,
           });
 
-          Alert.alert("Success", `File read successfully using ${encoding}`);
-          return;
+          // Basic validation of file content
+          if (fileContent && fileContent.length > 0) {
+            log(
+              `Success with ${encoding}! Content length: ${fileContent.length}`,
+            );
+            log(`First 50 chars: ${fileContent.substring(0, 50)}`);
+            successfulEncoding = encoding;
+            break; // Exit the loop once we have successful reading
+          }
         } catch (encError) {
           log(`Failed with ${encoding}: ${encError.message}`, "error");
         }
       }
 
-      // If we get here, all encodings failed
-      log("All encoding attempts failed", "error");
-      Alert.alert("Error", "Could not read file with any encoding");
+      if (!fileContent || !successfulEncoding) {
+        log("All encoding attempts failed", "error");
+        Alert.alert("Error", "Could not read file with any encoding");
+        return;
+      }
+
+      // Update UI with file info
+      setLastFile({
+        path: decodedUri,
+        header: fileContent.substring(0, 50),
+        encoding: successfulEncoding,
+      });
+
+      // Proceed with upload
+      const uploadSuccess = await uploadFile(decodedUri, fileContent);
+      if (uploadSuccess) {
+        log("File processing completed successfully");
+      }
     } catch (error) {
       log("Error in handleDeeplink: " + error.message, "error");
       Alert.alert("Error", "Failed to process file: " + error.message);
