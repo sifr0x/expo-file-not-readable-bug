@@ -13,28 +13,35 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.per12345678.ReadFile"
+      "bundleIdentifier": "com.per12345678.ReadFile",
+      "buildNumber": "5",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "LSSupportsOpeningDocumentsInPlace": true,
+        "UIFileSharingEnabled": true,
+        "UISupportsDocumentBrowser": true,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "PDF",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["com.adobe.pdf"]
+          }
+        ]
+      }
     },
-    "plugins": [
-      [
-        "./config-plugins/withOpenIn"
-      ]
-    ],
+    "plugins": [["./config-plugins/withOpenIn"]],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": [
-        "android.permission.READ_EXTERNAL_STORAGE"
-      ],
+      "permissions": ["android.permission.READ_EXTERNAL_STORAGE"],
       "intentFilters": [
         {
           "action": "VIEW",
-          "category": [
-            "DEFAULT",
-            "BROWSABLE"
-          ],
+          "category": ["DEFAULT", "BROWSABLE"],
           "data": {
             "scheme": "content",
             "mimeType": "application/pdf"
